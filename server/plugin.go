@@ -20,6 +20,7 @@ type guard struct {
 	plugin.MattermostPlugin
 	botUserID string
 
+	message string
 	guards atomic.Value
 
 	readFile func(path string) ([]byte, error)

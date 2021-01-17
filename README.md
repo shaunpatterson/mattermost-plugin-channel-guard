@@ -15,22 +15,20 @@ To configure the Guard, edit your `config.json` file with the following format:
 ```
 "plugins": {
 	"com.mattermost.channel-guard": {
-		"guards":[
-			{
-			"TeamName": "your-team-name",
-			"ChannelName": "channel_1",
-			"Allowed" : ["user_1", "user_1"]
-			}
-		]
+	    "message": "This channel is under guard. You do not have the permissions to post. Please contact the system administrators if you believe this is incorrect"
+		"guards": {
+		    "channel-id-1": [ "user_1", "user_2" ],
+		    "channel-id-2": [ "user_1", "user_2", "user_3" ],
+		}
 	}
 }
 ```
 
 where
 
-- **TeamName**: The team for which the guard will match against. Must be the team handle used in the URL, in lowercase. For example, in the following URL the **TeamName** value is `my-team`: https://example.com/my-team/channels/my-channel
-- **ChannelName**:  The channel that is under guard. Must be the channel handle used in the URL, in lowercase. For example, in the following URL the **channel name** value is `my-channel`: https://example.com/my-team/channels/my-channel
-- **Allowed**: List of Mattermost Usersnames that can post in this channel.
+- **channel-id-1**: Is the id of the channel you want to guard
+- **user_1, user_2, etc**: List of Mattermost usernames that can post to the channel
+
 
 ## Development
 For additional information on developing plugins, refer to [our plugin developer documentation](https://developers.mattermost.com/extend/plugins/).

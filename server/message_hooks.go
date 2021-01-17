@@ -2,19 +2,11 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
 )
 
-const message = "This channel is under guard. You do not have the permissions to post. Please contact the system administrators if you believe this is incorrect"
-
 func (p *guard) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model.Post, string) {
-
-	Teams, appErr := p.API.GetTeams()
-	if appErr != nil {
-		return nil, "Failed to get teams"
-	}
 
 	if post.IsSystemMessage() {
 		return post, ""
@@ -24,41 +16,44 @@ func (p *guard) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model
 		return post, ""
 	}
 
-	postuser, _ := p.API.GetUser(post.UserId)
-
-	if postuser.IsBot == true {
+	postUser, _ := p.API.GetUser(post.UserId)
+	if postUser.IsBot == true {
 		return post, ""
 	}
 
-	for _, guard := range p.getGuards() {
-
-		users, _ := p.API.GetUsersByUsernames(guard.Allowed)
-
-		for _, team := range Teams {
-
-			if team.Name == guard.TeamName {
-
-				if p.teamRoleChecker(post, team) {
-					return post, ""
-				}
-
-				returnedPost := p.checker(post, team, users, guard)
-				if returnedPost == nil {
-					str := fmt.Sprintf("%s attempted to post in channel %s", post.UserId, post.ChannelId)
-					return nil, str
-				}
-
-            }
-
-		}
+	guards := p.getGuards()
+	allowedUsers, ok := guards[post.ChannelId]
+	if ok == false {
+		return post, ""
 	}
 
-	return post, ""
+	channel, _ := p.API.GetChannel(post.ChannelId)
+	if p.isTeamAdmin(post.UserId, channel.TeamId) {
+		return post, ""
+	}
+
+	users, _ := p.API.GetUsersByUsernames(allowedUsers)
+	if len(users) != 0 {
+		for _, user := range users {
+			if post.UserId == user.Id {
+				return post, ""
+			}
+		}
+	}
+	p.API.SendEphemeralPost(post.UserId, &model.Post{
+		UserId:    p.botUserID,
+		ChannelId: post.ChannelId,
+		Message:   p.message,
+	})
+
+	str := fmt.Sprintf("%s attempted to post in channel %s", post.UserId, post.ChannelId)
+	return nil, str
+
 }
 
-func (p *guard) teamRoleChecker(post *model.Post, team *model.Team) bool {
+func (p *guard) isTeamAdmin(userId string, teamId string) bool {
 
-	teamMember, _ := p.API.GetTeamMember(team.Id, post.UserId)
+	teamMember, _ := p.API.GetTeamMember(teamId, userId)
 
 	teamRoles := teamMember.GetRoles()
 
@@ -86,26 +81,4 @@ func (p *guard) channelRoleChecker(post *model.Post) bool {
 
 	return false
 
-}
-
-func (p *guard) checker(post *model.Post, team *model.Team, users []*model.User, guard *ConfigGuard) *model.Post {
-
-	guardChannel, _ := p.API.GetChannelByName(team.Id, guard.ChannelName, false)
-
-	if post.ChannelId == guardChannel.Id {
-		if len(users) != 0 {
-			for _, user := range users {
-				if post.UserId == user.Id {
-					return post
-				}
-			}
-		}
-		p.API.SendEphemeralPost(post.UserId, &model.Post{
-			UserId:    p.botUserID,
-			ChannelId: guardChannel.Id,
-			Message:   message,
-		})
-		return nil
-	}
-	return post
 }

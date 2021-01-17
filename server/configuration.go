@@ -1,15 +1,9 @@
 package main
 
 type Configuration struct {
-	Guards []*ConfigGuard
-}
+	Message string
 
-type ConfigGuard struct {
-	TeamName string
-
-	ChannelName string
-
-	Allowed []string
+	Guards map[string][]string
 }
 
 // OnConfigurationChange is invoked when configuration changes may have been made.
@@ -21,12 +15,13 @@ func (p *guard) OnConfigurationChange() error {
 		return err
 	}
 
+	p.message = c.Message
 	p.guards.Store(c.Guards)
 
 	return nil
 
 }
 
-func (p *guard) getGuards() []*ConfigGuard {
-	return p.guards.Load().([]*ConfigGuard)
+func (p *guard) getGuards() map[string][]string {
+	return p.guards.Load().(map[string][]string)
 }
