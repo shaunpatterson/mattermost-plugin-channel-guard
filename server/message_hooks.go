@@ -16,8 +16,8 @@ func (p *guard) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model
 		return post, ""
 	}
 
-	postUser, _ := p.API.GetUser(post.UserId)
-	if postUser.IsBot == true {
+	postUser, err := p.API.GetUser(post.UserId)
+	if err != nil || postUser.IsBot == true {
 		return post, ""
 	}
 
@@ -27,12 +27,15 @@ func (p *guard) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model
 		return post, ""
 	}
 
-	channel, _ := p.API.GetChannel(post.ChannelId)
-	if p.isTeamAdmin(post.UserId, channel.TeamId) {
+	channel, err := p.API.GetChannel(post.ChannelId)
+	if err != nil || p.isTeamAdmin(post.UserId, channel.TeamId) {
 		return post, ""
 	}
 
-	users, _ := p.API.GetUsersByUsernames(allowedUsers)
+	users, err := p.API.GetUsersByUsernames(allowedUsers)
+	if err != nil {
+		return post, ""
+	}
 	if len(users) != 0 {
 		for _, user := range users {
 			if post.UserId == user.Id {
@@ -53,7 +56,10 @@ func (p *guard) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model
 
 func (p *guard) isTeamAdmin(userId string, teamId string) bool {
 
-	teamMember, _ := p.API.GetTeamMember(teamId, userId)
+	teamMember, err := p.API.GetTeamMember(teamId, userId)
+	if err != nil {
+		return true
+	}
 
 	teamRoles := teamMember.GetRoles()
 
@@ -69,7 +75,10 @@ func (p *guard) isTeamAdmin(userId string, teamId string) bool {
 
 func (p *guard) channelRoleChecker(post *model.Post) bool {
 
-	channelMember, _ := p.API.GetChannelMember(post.ChannelId, post.UserId)
+	channelMember, err := p.API.GetChannelMember(post.ChannelId, post.UserId)
+	if err != nil {
+		return true
+	}
 
 	channelRoles := channelMember.GetRoles()
 
